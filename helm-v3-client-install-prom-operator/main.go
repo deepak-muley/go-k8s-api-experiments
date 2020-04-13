@@ -52,6 +52,8 @@ func main() {
 	RepoUpdate()
 	// Install charts
 	InstallChart(releaseName, repoName, chartName, args)
+	// Uninstall charts
+	UninstallChart(releaseName)
 }
 
 // RepoAdd adds repo with given name and url
@@ -111,7 +113,7 @@ func RepoAdd(name, url string) {
 	if err := f.WriteFile(repoFile, 0644); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%q has been added to your repositories\n", name)
+	fmt.Printf("%q has been added to your repositories: %#v\n", name, repoFile)
 }
 
 // RepoUpdate updates charts for all helm repos
@@ -145,13 +147,17 @@ func RepoUpdate() {
 		}(re)
 	}
 	wg.Wait()
-	fmt.Printf("Update Complete. ⎈ Happy Helming!⎈\n")
+	fmt.Printf("Update Complete. ⎈ Happy Helming!⎈: %s\n", repoFile)
 }
 
 // InstallChart
 func InstallChart(name, repo, chart string, args map[string]string) {
 	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), debug); err != nil {
+	if err := actionConfig.Init(
+		settings.RESTClientGetter(),
+		settings.Namespace(),
+		os.Getenv("HELM_DRIVER"),
+		debug); err != nil {
 		log.Fatal(err)
 	}
 	client := action.NewInstall(actionConfig)
@@ -221,6 +227,25 @@ func InstallChart(name, repo, chart string, args map[string]string) {
 		log.Fatal(err)
 	}
 	fmt.Println(release.Manifest)
+}
+
+// UninstallChart
+func UninstallChart(name string) {
+	//helm delete $name
+	actionConfig := new(action.Configuration)
+	if err := actionConfig.Init(
+		settings.RESTClientGetter(),
+		settings.Namespace(),
+		os.Getenv("HELM_DRIVER"),
+		debug); err != nil {
+		log.Fatal(err)
+	}
+	client := action.NewUninstall(actionConfig)
+	release, err := client.Run(name)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Uninstalled release: %s", name)
 }
 
 func isChartInstallable(ch *chart.Chart) (bool, error) {
